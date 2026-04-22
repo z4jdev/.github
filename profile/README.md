@@ -2,7 +2,7 @@
 
 **Open-source control plane for Python task infrastructure.**
 
-One dashboard, one API, one agent SDK — for every Python task engine.
+One dashboard, one API, one agent SDK - for every Python task engine.
 Celery, RQ, Dramatiq, Huey, arq, TaskIQ, APScheduler, or plain
 scripts. Self-hosted. Self-contained. Zero external dependencies
 beyond Python.
@@ -37,10 +37,10 @@ install required.
 
 ### Brain (control plane)
 
-- [**z4j-brain**](https://github.com/z4jdev/z4j-brain) — FastAPI
+- [**z4j-brain**](https://github.com/z4jdev/z4j-brain) - FastAPI
   backend + React dashboard + Alembic migrations, bundled in one
   pip-installable wheel. **AGPL v3.**
-- [z4j](https://github.com/z4jdev/z4j) — umbrella meta-package:
+- [z4j](https://github.com/z4jdev/z4j) - umbrella meta-package:
   `pip install z4j[django,celery]` in one command.
 
 ### Engine adapters (Apache 2.0, safe for proprietary code)
@@ -72,7 +72,7 @@ Split on purpose, not by accident.
 
 - **Brain** (the server you run in your infrastructure) is
   [**AGPL v3**](https://www.gnu.org/licenses/agpl-3.0.html). You can
-  self-host, modify, and redistribute — if you run a modified copy
+  self-host, modify, and redistribute - if you run a modified copy
   as a network service, publish your modifications under the same
   license. If that's incompatible with your policy, a commercial
   license is available: `licensing@z4j.com`.

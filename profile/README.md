@@ -29,76 +29,142 @@ install required.
 ## Where to go next
 
 - **Run it locally**: start with [z4j-brain](https://github.com/z4jdev/z4j-brain)
-- **Integrate into an existing app**: pick your task engine below
-- **Migrate your scheduler**: see the
-  [z4j-scheduler section](#z4j-scheduler-the-flagship) below
+- **Integrate into an existing app**: pick your task engine
+  [below](#engines-we-support)
 - **Read the docs**: <https://z4j.dev>
 - **Project website**: <https://z4j.com>
 
-## z4j-scheduler (the flagship)
+## z4j-brain (the control plane)
 
-z4j ships its own dynamic scheduler,
-[**z4j-scheduler**](https://github.com/z4jdev/z4j-scheduler), as an
-engine-agnostic alternative to celery-beat / rq-scheduler /
-APScheduler.
+[**z4j-brain**](https://github.com/z4jdev/z4j-brain) is the main
+application. Server, dashboard, REST API, audit log. One process per
+environment, agents connect over an authenticated WebSocket, the
+dashboard surfaces every task / worker / queue / schedule event and
+exposes the operator action surface.
 
-It is the genuinely differentiated piece of the project. The other
-adapters (z4j-celerybeat, z4j-rqscheduler, z4j-apscheduler, etc.)
-are observation-only wrappers that surface existing schedules in
-the dashboard. **z4j-scheduler is the schedule.**
+What an operator gets:
 
-### What makes it different
+- **Unified action surface across every Python task engine.** Retry,
+  cancel, bulk retry, purge queue, requeue dead-letter, restart
+  worker, schedule CRUD, manual trigger. Same workflow whether the
+  task ran on Celery, RQ, Dramatiq, Huey, arq, or TaskIQ.
+- **Real audit story.** HMAC-chained tamper-evident audit log of
+  every privileged action, with the issuer, target, source IP,
+  timestamp, and result. Exportable to CSV / JSON / xlsx for
+  compliance reviews.
+- **RBAC.** Project-scoped roles (Viewer / Operator / Admin / global
+  brain Admin). Argon2id passwords, signed session cookies, CSRF
+  tokens, per-project bearer-token API keys.
+- **Reconciliation.** Background worker reconciles tasks against
+  the engine's ground truth on a continuous cadence. No stale
+  "running" rows after a worker SIGKILL, no orphaned "pending"
+  tasks the broker already discarded.
+- **Notifications.** Per-user subscriptions and per-project
+  defaults across email / Slack / PagerDuty / Discord / Telegram /
+  webhook, with cooldown, mute, priority filters, and a personal
+  delivery log.
+- **Schedules**, with per-schedule trigger and a *Sync now* button
+  that pulls a fresh inventory from any connected agent. See the
+  [Schedulers section](#schedulers) below for how schedule sources
+  fit in.
+- **First-class multi-engine.** A single project runs Celery + RQ +
+  arq side by side; the brain renders the right badges per task,
+  routes operator actions to the right adapter, and keeps the
+  audit log uniform across them.
 
-- **Engine-agnostic.** One scheduler service drives all six engines
-  (Celery, RQ, Dramatiq, Huey, arq, TaskIQ) from one process. A
-  project running Celery for legacy services and arq for a FastAPI
-  rewrite uses the same scheduler for both, with one dashboard and
-  one audit trail.
+```bash
+pip install z4j-brain                  # SQLite, single process
+pip install 'z4j-brain[postgres]'      # production
+z4j-brain serve
+```
+
+The brain is **AGPL v3** because it's the service operators host.
+Everything your application code imports is **Apache-2.0**.
+
+## Engines we support
+
+Six Python task engines, all first-class. Mix and match within a
+project; the brain renders them uniformly.
+
+| Engine | Adapter | Notes |
+|---|---|---|
+| **Celery** | [z4j-celery](https://github.com/z4jdev/z4j-celery) | Widest feature coverage. Pool restart with zero task loss, broker-side rate limiting. |
+| **RQ** | [z4j-rq](https://github.com/z4jdev/z4j-rq) | Redis-backed; Django and Flask both first-class. |
+| **Dramatiq** | [z4j-dramatiq](https://github.com/z4jdev/z4j-dramatiq) | Middleware-based capture, no decorator changes to your actors. |
+| **Huey** | [z4j-huey](https://github.com/z4jdev/z4j-huey) | Huey 2.x and 3.x, redis / sqlite / in-memory backends. |
+| **arq** | [z4j-arq](https://github.com/z4jdev/z4j-arq) | Async-native; common pairing with FastAPI. |
+| **TaskIQ** | [z4j-taskiq](https://github.com/z4jdev/z4j-taskiq) | Async-native; middleware hooks. |
+
+Each adapter streams task lifecycle events to the brain and
+accepts operator control actions back the same WebSocket. All
+Apache-2.0.
+
+## Schedulers
+
+z4j surfaces schedules from your existing in-language scheduler
+(celery-beat, rq-scheduler, APScheduler, etc.) so you can see them
+on the dashboard alongside tasks. Or you can run **z4j-scheduler**
+as the canonical scheduler across mixed engines, which is what
+makes the project genuinely different from Flower / rq-dashboard /
+viewer-grade tooling.
+
+### Observation-only adapters
+
+These wrap the engine's native scheduler and surface its existing
+schedules in the dashboard without taking ownership. Use them when
+the in-language scheduler already meets your needs and you just
+want the schedules visible alongside tasks.
+
+| Engine | Scheduler companion |
+|---|---|
+| Celery | [z4j-celerybeat](https://github.com/z4jdev/z4j-celerybeat) |
+| RQ | [z4j-rqscheduler](https://github.com/z4jdev/z4j-rqscheduler) |
+| Huey | [z4j-hueyperiodic](https://github.com/z4jdev/z4j-hueyperiodic) |
+| arq | [z4j-arqcron](https://github.com/z4jdev/z4j-arqcron) |
+| TaskIQ | [z4j-taskiqscheduler](https://github.com/z4jdev/z4j-taskiqscheduler) |
+| APScheduler | [z4j-apscheduler](https://github.com/z4jdev/z4j-apscheduler) |
+| Dramatiq | (no upstream scheduler, use z4j-scheduler) |
+
+### z4j-scheduler (canonical, engine-agnostic)
+
+[**z4j-scheduler**](https://github.com/z4jdev/z4j-scheduler) is
+z4j's own dynamic scheduler. It's the genuinely differentiated piece
+and worth a closer look if any of these are true: you run more than
+one engine, you want to edit schedules live without daemon restarts,
+or you need an audit trail of schedule changes.
+
+Concretely, what z4j-scheduler does that the in-language schedulers
+don't:
+
+- **Engine-agnostic.** One service drives all six engines from one
+  process. A project running Celery for legacy services and arq
+  for a FastAPI rewrite uses the same scheduler for both.
 - **Live editing.** Schedules live in z4j-brain's Postgres database.
-  Create, edit, pause, resume, rename, and delete from the dashboard
-  or REST API without a daemon restart. celery-beat needs a
-  beat-process restart for static-config edits; rq-scheduler stores
-  schedules in Redis but has no editing UI; APScheduler edits are
-  in-process only.
+  Create, edit, pause, resume, rename, delete from the dashboard
+  or REST API. No daemon restart.
 - **HMAC-chained audit log.** Every schedule mutation (who, what,
-  when, from which IP) is recorded in a tamper-evident audit chain
-  alongside the brain's other audit rows. celery-beat keeps no
-  record. django-celery-beat keeps a partial one only if you wired
-  up django-auditlog.
-- **HA-ready.** Multiple scheduler instances run against the same
-  Postgres database; advisory locks elect one leader to tick;
-  followers stay warm. Rolling restarts and leader failovers are
-  seconds, not minutes, with no missed-fire window beyond the
-  per-schedule catch-up policy.
-- **Reversible by design.** Importers cover celery-beat (static and
-  django-celery-beat), rq-scheduler, APScheduler jobstores, Huey
-  `@periodic_task`, arq cron, taskiq schedule sources, and system
-  crontab. Exporters write any schedule back to those same formats.
-  Round-trip integrity is pinned by tests so the schedule
-  definitions stay yours; you can leave whenever you want.
+  when, from which IP) recorded alongside the brain's other audit
+  rows. celery-beat keeps no record. django-celery-beat keeps a
+  partial one only if django-auditlog is wired up.
+- **HA-ready.** Multiple instances against one Postgres; advisory
+  locks elect a leader; followers stay warm. Rolling restarts and
+  failovers are seconds, not minutes.
+- **Reversible.** Importers cover every native scheduler
+  (celery-beat / django-celery-beat / rq-scheduler / APScheduler /
+  Huey @periodic_task / arq cron / taskiq sources / system
+  crontab). Exporters write back to those same formats. Round-trip
+  integrity is pinned by tests; you can leave whenever you want.
 - **Solar triggers + DST correctness.** Schedule kinds: cron,
-  interval, one-shot, solar (sunrise / sunset / dawn / dusk / noon /
-  midnight at a given lat / lon). IANA zones validated at the
-  boundary; the DST fall-back fold is fixed (no double-fires);
+  interval, one-shot, solar (sunrise / sunset / dawn / dusk /
+  noon / midnight at a given lat / lon). IANA zones validated at
+  the boundary; DST fall-back fold fixed (no double-fires);
   spring-forward gap handled per-schedule.
 
-### When to choose it
-
-You probably want it if you run more than one Python task engine
-and want one schedule surface; if an auditor or security review
-asks who paused the nightly billing job last Tuesday and you don't
-have a clean answer; if you're tired of restarting celery-beat to
-change a cron expression; or if you want HA scheduling without
-standing up a second control plane.
-
-You probably don't need it if you run a single engine, have no
-compliance pressure, and the in-language scheduler already meets
-your needs. The observation-only adapters
-([z4j-celerybeat](https://github.com/z4jdev/z4j-celerybeat),
-[z4j-rqscheduler](https://github.com/z4jdev/z4j-rqscheduler),
-[z4j-apscheduler](https://github.com/z4jdev/z4j-apscheduler))
-exist precisely for that case: surface the schedules in the z4j
-dashboard without taking ownership.
+If you only run one engine, have no compliance pressure, and your
+existing in-language scheduler meets your needs, the
+observation-only adapter above is the simpler choice. z4j-scheduler
+exists for the mixed-engine + audit + live-editing case, and as a
+reversible migration path when those constraints change.
 
 ```bash
 pip install z4j-scheduler
@@ -107,62 +173,38 @@ z4j-scheduler import --from celery --celery-app myapp:app \
   --api-token "$Z4J_SCHEDULER_BRAIN_API_TOKEN" --dry-run
 ```
 
-The migration guide at
-[z4j.dev/scheduler/migrating-from-celery-beat/](https://z4j.dev/scheduler/migrating-from-celery-beat/)
-walks the importer + dashboard verification path step by step.
+Migration walkthrough at
+[z4j.dev/scheduler/migrating-from-celery-beat/](https://z4j.dev/scheduler/migrating-from-celery-beat/).
 
-## Packages
+## Framework integrations
 
-### Brain (control plane)
+One-line install for the three most common Python web frameworks.
+Each adapter auto-discovers whichever engine adapter you have
+installed alongside; cross-stack combos like Flask + RQ or
+FastAPI + arq are first-class supported.
 
-- [**z4j-brain**](https://github.com/z4jdev/z4j-brain). FastAPI
-  backend + React dashboard + Alembic migrations, bundled in one
-  pip-installable wheel. **AGPL v3.**
-- [z4j](https://github.com/z4jdev/z4j). Umbrella meta-package:
-  `pip install z4j[django,celery]` in one command.
-
-### Scheduler (engine-agnostic, dynamic)
-
-- [**z4j-scheduler**](https://github.com/z4jdev/z4j-scheduler). The
-  flagship dynamic scheduler. Drives every engine, edits live from
-  the dashboard, HA-ready, audited, importer + exporter for every
-  native scheduler. See [the dedicated section above](#z4j-scheduler-the-flagship).
-
-### Engine adapters (Apache 2.0, safe for proprietary code)
-
-| Engine | Adapter | Scheduler companion (observation-only) |
-|---|---|---|
-| Celery | [z4j-celery](https://github.com/z4jdev/z4j-celery) | [z4j-celerybeat](https://github.com/z4jdev/z4j-celerybeat) |
-| RQ | [z4j-rq](https://github.com/z4jdev/z4j-rq) | [z4j-rqscheduler](https://github.com/z4jdev/z4j-rqscheduler) |
-| Dramatiq | [z4j-dramatiq](https://github.com/z4jdev/z4j-dramatiq) | (use z4j-scheduler) |
-| Huey | [z4j-huey](https://github.com/z4jdev/z4j-huey) | [z4j-hueyperiodic](https://github.com/z4jdev/z4j-hueyperiodic) |
-| arq | [z4j-arq](https://github.com/z4jdev/z4j-arq) | [z4j-arqcron](https://github.com/z4jdev/z4j-arqcron) |
-| TaskIQ | [z4j-taskiq](https://github.com/z4jdev/z4j-taskiq) | [z4j-taskiqscheduler](https://github.com/z4jdev/z4j-taskiqscheduler) |
-| APScheduler | [z4j-apscheduler](https://github.com/z4jdev/z4j-apscheduler) | (engine-agnostic, runs in-process) |
-
-The "scheduler companion" column lists the in-language scheduler
-each engine ships with; the z4j adapter surfaces those schedules in
-the dashboard without taking ownership. For Dramatiq (which has no
-upstream scheduler) and for projects that want one canonical
-scheduler across mixed engines, use
-[z4j-scheduler](https://github.com/z4jdev/z4j-scheduler) instead.
-
-### Framework integrations (Apache 2.0)
-
-- [z4j-django](https://github.com/z4jdev/z4j-django). Django task
-  telemetry; one-line install via `INSTALLED_APPS`.
-- [z4j-flask](https://github.com/z4jdev/z4j-flask). Flask background
-  tasks; one-line install via `Z4J(app)`.
-- [z4j-fastapi](https://github.com/z4jdev/z4j-fastapi). FastAPI
-  BackgroundTasks; one-line install via `add_z4j(app)`.
-
-### Foundations (Apache 2.0)
-
-- [z4j-core](https://github.com/z4jdev/z4j-core). Shared SDK used
-  by every agent; pure-Python, no framework imports.
-- [z4j-bare](https://github.com/z4jdev/z4j-bare). Framework-free
+- [**z4j-django**](https://github.com/z4jdev/z4j-django). Add
+  `"z4j_django"` to `INSTALLED_APPS`; the agent starts when
+  Django boots.
+- [**z4j-flask**](https://github.com/z4jdev/z4j-flask). `Z4J(app)`
+  initializer in your app factory.
+- [**z4j-fastapi**](https://github.com/z4jdev/z4j-fastapi).
+  `add_z4j(app)` call after constructing the FastAPI app.
+- [**z4j-bare**](https://github.com/z4jdev/z4j-bare). Framework-free
   agent runtime for plain scripts, Celery / RQ / Dramatiq workers,
-  custom services.
+  or custom services that don't have a web framework.
+
+All Apache-2.0.
+
+## Foundations
+
+- [**z4j-core**](https://github.com/z4jdev/z4j-core). Shared SDK
+  used by every agent. Pure-Python, no framework imports, vendorable
+  into any worker process.
+- [**z4j**](https://github.com/z4jdev/z4j). Umbrella meta-package.
+  `pip install z4j[django,celery]` resolves a coherent stack in one
+  command; cross-versioning across all 20 packages stays in sync
+  via the umbrella's floors.
 
 ## License
 

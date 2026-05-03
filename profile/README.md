@@ -7,8 +7,8 @@ Celery, RQ, Dramatiq, Huey, arq, TaskIQ, APScheduler, or plain
 scripts. Self-hosted. Self-contained. Zero external dependencies
 beyond Python.
 
-[![PyPI](https://img.shields.io/pypi/v/z4j-brain?label=z4j-brain&color=blue)](https://pypi.org/project/z4j-brain/)
-[![Python](https://img.shields.io/pypi/pyversions/z4j-brain?color=blue)](https://pypi.org/project/z4j-brain/)
+[![PyPI](https://img.shields.io/pypi/v/z4j?label=z4j&color=blue)](https://pypi.org/project/z4j/)
+[![Python](https://img.shields.io/pypi/pyversions/z4j?color=blue)](https://pypi.org/project/z4j/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0%20%2F%20Apache--2.0-green)](#license)
 [![Docs](https://img.shields.io/badge/docs-z4j.dev-orange)](https://z4j.dev)
 
@@ -18,8 +18,8 @@ beyond Python.
 pip install z4j
 export Z4J_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(48))")
 export Z4J_SESSION_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(48))")
-z4j-brain migrate upgrade head
-z4j-brain serve
+z4j migrate upgrade head
+z4j serve
 ```
 
 Open **http://localhost:7700**. You land on the dashboard. SQLite and
@@ -28,19 +28,19 @@ install required.
 
 ## Where to go next
 
-- **Run it locally**: start with [z4j-brain](https://github.com/z4jdev/z4j-brain)
+- **Run it locally**: start with [z4j](https://github.com/z4jdev/z4j)
 - **Integrate into an existing app**: pick your task engine
   [below](#engines-we-support)
 - **Read the docs**: <https://z4j.dev>
 - **Project website**: <https://z4j.com>
 
-## z4j-brain (the control plane)
+## z4j (the control plane)
 
-[**z4j-brain**](https://github.com/z4jdev/z4j-brain) is the main
-application. Server, dashboard, REST API, audit log. One process per
-environment, agents connect over an authenticated WebSocket, the
-dashboard surfaces every task / worker / queue / schedule event and
-exposes the operator action surface.
+[**z4j**](https://github.com/z4jdev/z4j) is the main application.
+Server, dashboard, REST API, audit log. One process per environment,
+agents connect over an authenticated WebSocket, the dashboard
+surfaces every task / worker / queue / schedule event and exposes
+the operator action surface.
 
 What an operator gets:
 
@@ -53,8 +53,8 @@ What an operator gets:
   timestamp, and result. Exportable to CSV / JSON / xlsx for
   compliance reviews.
 - **RBAC.** Project-scoped roles (Viewer / Operator / Admin / global
-  brain Admin). Argon2id passwords, signed session cookies, CSRF
-  tokens, per-project bearer-token API keys.
+  Admin). Argon2id passwords, signed session cookies, CSRF tokens,
+  per-project bearer-token API keys.
 - **Reconciliation.** Background worker reconciles tasks against
   the engine's ground truth on a continuous cadence. No stale
   "running" rows after a worker SIGKILL, no orphaned "pending"
@@ -68,23 +68,23 @@ What an operator gets:
   [Schedulers section](#schedulers) below for how schedule sources
   fit in.
 - **First-class multi-engine.** A single project runs Celery + RQ +
-  arq side by side; the brain renders the right badges per task,
-  routes operator actions to the right adapter, and keeps the
-  audit log uniform across them.
+  arq side by side; z4j renders the right badges per task, routes
+  operator actions to the right adapter, and keeps the audit log
+  uniform across them.
 
 ```bash
-pip install z4j-brain                  # SQLite, single process
-pip install 'z4j-brain[postgres]'      # production
-z4j-brain serve
+pip install z4j                  # SQLite, single process
+pip install 'z4j[postgres]'      # production
+z4j serve
 ```
 
-The brain is **AGPL v3** because it's the service operators host.
+z4j is **AGPL v3** because it's the service operators host.
 Everything your application code imports is **Apache-2.0**.
 
 ## Engines we support
 
 Six Python task engines, all first-class. Mix and match within a
-project; the brain renders them uniformly.
+project; z4j renders them uniformly.
 
 | Engine | Adapter | Notes |
 |---|---|---|
@@ -95,9 +95,8 @@ project; the brain renders them uniformly.
 | **arq** | [z4j-arq](https://github.com/z4jdev/z4j-arq) | Async-native; common pairing with FastAPI. |
 | **TaskIQ** | [z4j-taskiq](https://github.com/z4jdev/z4j-taskiq) | Async-native; middleware hooks. |
 
-Each adapter streams task lifecycle events to the brain and
-accepts operator control actions back the same WebSocket. All
-Apache-2.0.
+Each adapter streams task lifecycle events to z4j and accepts
+operator control actions back the same WebSocket. All Apache-2.0.
 
 ## Schedulers
 
@@ -139,11 +138,11 @@ don't:
 - **Engine-agnostic.** One service drives all six engines from one
   process. A project running Celery for legacy services and arq
   for a FastAPI rewrite uses the same scheduler for both.
-- **Live editing.** Schedules live in z4j-brain's Postgres database.
+- **Live editing.** Schedules live in z4j's Postgres database.
   Create, edit, pause, resume, rename, delete from the dashboard
   or REST API. No daemon restart.
 - **HMAC-chained audit log.** Every schedule mutation (who, what,
-  when, from which IP) recorded alongside the brain's other audit
+  when, from which IP) recorded alongside z4j's other audit
   rows. celery-beat keeps no record. django-celery-beat keeps a
   partial one only if django-auditlog is wired up.
 - **HA-ready.** Multiple instances against one Postgres; advisory
@@ -169,7 +168,7 @@ reversible migration path when those constraints change.
 ```bash
 pip install z4j-scheduler
 z4j-scheduler import --from celery --celery-app myapp:app \
-  --project myproject --brain-url https://brain.example.com \
+  --project myproject --brain-url https://z4j.example.com \
   --api-token "$Z4J_SCHEDULER_BRAIN_API_TOKEN" --dry-run
 ```
 
@@ -201,35 +200,37 @@ All Apache-2.0.
 - [**z4j-core**](https://github.com/z4jdev/z4j-core). Shared SDK
   used by every agent. Pure-Python, no framework imports, vendorable
   into any worker process.
-- [**z4j**](https://github.com/z4jdev/z4j). Umbrella meta-package.
-  `pip install z4j[django,celery]` resolves a coherent stack in one
-  command; cross-versioning across all 20 packages stays in sync
-  via the umbrella's floors.
+- [**z4j**](https://github.com/z4jdev/z4j). The flagship distribution
+  -- ships z4j (the central process), plus an extras catalogue for
+  pulling in adapters: `pip install z4j[django,celery]` resolves a
+  coherent stack in one command; cross-versioning across all 20
+  packages stays in sync via the floors.
 
 ## License
 
 Split on purpose, not by accident.
 
-- **Brain** (the server you run in your infrastructure) is
+- **z4j** (the central process you run in your infrastructure) is
   [**AGPL v3**](https://www.gnu.org/licenses/agpl-3.0.html). You can
   self-host, modify, and redistribute. If you run a modified copy
   as a network service, publish your modifications under the same
   license. If that's incompatible with your policy, a commercial
   license is available: `licensing@z4j.com`.
-- **All 18 agent + scheduler packages** (engine adapters, framework
+- **All agent + scheduler packages** (engine adapters, framework
   integrations, foundations, plus z4j-scheduler) are
   [**Apache 2.0**](https://www.apache.org/licenses/LICENSE-2.0).
   Integrating z4j into a proprietary application does **not**
   subject your application to the AGPL.
 
-The split is deliberate: the brain is the service operators host,
+The split is deliberate: z4j is the service operators host,
 protected by copyleft. Everything your application code imports is
 permissive.
 
 ## Project status
 
-z4j 1.3.4 (April 2026) is the current baseline. Earlier 1.x
-versions on PyPI are yanked; `pip install` selects 1.3.x. The
-ecosystem ships 20 PyPI packages cross-versioned to the same
-release line, with floors enforced by the umbrella package so
-mixed installs stay coherent.
+z4j 1.4.0 (May 2026) is the current baseline -- the consolidation
+cut where the central process moved to the `z4j` PyPI distribution
+(pre-1.4.0 it was `z4j`, which now exists as a metadata-only
+compatibility shim). The ecosystem ships 20 PyPI packages
+cross-versioned to the same release line, with floors enforced
+through every package's pyproject so mixed installs stay coherent.

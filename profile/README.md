@@ -11,6 +11,24 @@ beyond Python.
 [![Python](https://img.shields.io/pypi/pyversions/z4j?color=blue)](https://pypi.org/project/z4j/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0%20%2F%20Apache--2.0-green)](#license)
 [![Docs](https://img.shields.io/badge/docs-z4j.dev-orange)](https://z4j.dev)
+[![Demo](https://img.shields.io/badge/demo-demo.z4j.dev-yellow)](https://demo.z4j.dev)
+
+## Try the live demo (no install)
+
+[**demo.z4j.dev**](https://demo.z4j.dev) is the dashboard SPA running
+in your browser against pre-baked fake data. One click on the
+pre-filled login lands you in a populated control plane with four
+sample projects: Celery + celery-beat (small healthy starter),
+FastAPI + arq + arq-cron, Django + Celery + django-celery-beat
+with a current incident scenario (failing schedule, alert firing,
+worker offline), and a mixed-engine z4j-scheduler showcase
+driving Celery + RQ + Dramatiq workers from one place.
+
+It is a navigable preview, not a sandbox: every Create / Update /
+Delete button toast-blocks (`This is a demo. Refresh to reset;
+install z4j to make changes for real.`), no real backend is
+connected, refresh resets to a clean state. Useful before you
+commit to `pip install`.
 
 ## Install in 30 seconds
 

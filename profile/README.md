@@ -9,12 +9,12 @@ Self-hosted. No telemetry. Nothing to rewrite.
 [![PyPI](https://img.shields.io/pypi/v/z4j?label=z4j&color=blue)](https://pypi.org/project/z4j/)
 [![Python](https://img.shields.io/pypi/pyversions/z4j?color=blue)](https://pypi.org/project/z4j/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0%20%2F%20Apache--2.0-green)](#license)
-[![Docs](https://img.shields.io/badge/docs-z4j.dev-orange)](https://z4j.dev)
-[![Demo](https://img.shields.io/badge/demo-demo.z4j.dev-yellow)](https://demo.z4j.dev)
+[![Docs](https://img.shields.io/badge/docs-docs.z4j.com-orange)](https://docs.z4j.com)
+[![Demo](https://img.shields.io/badge/demo-demo.z4j.com-yellow)](https://demo.z4j.com)
 
 ## Try the live demo (no install)
 
-[**demo.z4j.dev**](https://demo.z4j.dev) is the dashboard running in your
+[**demo.z4j.com**](https://demo.z4j.com) is the dashboard running in your
 browser against sample data. One click on the pre-filled login lands you
 in a populated control plane with four sample projects, including a
 Django + Celery project
@@ -37,7 +37,7 @@ migrations and prints a one-time setup URL for the first admin. SQLite
 and the dashboard are bundled in the wheel; no database server and no
 npm install. For Docker, and for PostgreSQL when you want replicas,
 partitioned history and full-text search, see the
-[install guide](https://z4j.dev/getting-started/install/). Switching the
+[install guide](https://docs.z4j.com/getting-started/install/). Switching the
 database backend later does not move your data; the guide says exactly
 what does and does not carry over.
 
@@ -46,7 +46,7 @@ what does and does not carry over.
 - **Run it locally**: start with [z4j](https://github.com/z4jdev/z4j)
 - **Integrate into an existing app**: pick your task engine
   [below](#engines-we-support)
-- **Read the docs**: <https://z4j.dev>
+- **Read the docs**: <https://docs.z4j.com>
 - **Project website**: <https://z4j.com>
 
 ## z4j (the control plane)
@@ -183,7 +183,7 @@ z4j-scheduler import --from celery --project myproject
 
 Full comparison with celery-beat, django-celery-beat, rq-scheduler,
 APScheduler and cron, including where those remain the right choice:
-[z4j.dev/schedulers/z4j-scheduler/](https://z4j.dev/schedulers/z4j-scheduler/).
+[docs.z4j.com/schedulers/z4j-scheduler/](https://docs.z4j.com/schedulers/z4j-scheduler/).
 
 ## Framework integrations
 
@@ -200,7 +200,7 @@ Flask + RQ or FastAPI + arq are first-class.
 - [**z4j-bare**](https://github.com/z4jdev/z4j-bare): the framework-free
   agent runtime for plain scripts, worker processes and custom services.
 
-Quickstarts for each: <https://z4j.dev/getting-started/install/>. All
+Quickstarts for each: <https://docs.z4j.com/getting-started/install/>. All
 Apache-2.0.
 
 ## Foundations
@@ -236,4 +236,4 @@ release line, plus the frozen `z4j-brain` compatibility shim, which stays
 at its legacy version and is not part of the release wave. Floors in
 every package's pyproject keep mixed installs coherent. The badge at the
 top of this page shows the current release; the release history is at
-[z4j.dev/reference/changelog/](https://z4j.dev/reference/changelog/).
+[docs.z4j.com/reference/changelog/](https://docs.z4j.com/reference/changelog/).

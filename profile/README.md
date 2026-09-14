@@ -108,7 +108,7 @@ Six Python task engines, all first-class. Mix them within a project.
 | **Celery** | [z4j-celery](https://github.com/z4jdev/z4j-celery) | Widest coverage: pool restart through Celery's own control channel, broker-side rate limiting. |
 | **RQ** | [z4j-rq](https://github.com/z4jdev/z4j-rq) | Redis-backed; Django and Flask both first-class. |
 | **Dramatiq** | [z4j-dramatiq](https://github.com/z4jdev/z4j-dramatiq) | Middleware-based capture, no decorator changes to your actors. |
-| **Huey** | [z4j-huey](https://github.com/z4jdev/z4j-huey) | Huey 2.4 and later. |
+| **Huey** | [z4j-huey](https://github.com/z4jdev/z4j-huey) | Huey 2.4 and later, below 3. |
 | **arq** | [z4j-arq](https://github.com/z4jdev/z4j-arq) | Async-native; the common pairing with FastAPI. |
 | **taskiq** | [z4j-taskiq](https://github.com/z4jdev/z4j-taskiq) | Async-native; middleware hooks. |
 
@@ -168,7 +168,8 @@ What it does that the in-language schedulers do not:
   django-celery-beat, rq-scheduler, APScheduler jobstores or system
   cron, with a diff you can verify before cutover. Exports for Celery,
   RQ, APScheduler and cron are advisory: you review and apply the
-  generated file yourself.
+  generated file yourself. There is no importer for Huey, arq or taskiq
+  schedules.
 - **Cron, interval, one-shot and solar triggers.** IANA zones are
   validated; during a fall-back an ambiguous wall-clock slot is two
   distinct instants and z4j fires once at each.
@@ -230,8 +231,9 @@ Split on purpose, not by accident.
 
 ## Project status
 
-The ecosystem ships 19 PyPI packages cross-versioned to one release
-line, with floors in every package's pyproject so mixed installs stay
-coherent. The badge at the top of this page shows the current release;
-the release history is at
+The ecosystem ships 19 active PyPI packages cross-versioned to one
+release line, plus the frozen `z4j-brain` compatibility shim, which stays
+at its legacy version and is not part of the release wave. Floors in
+every package's pyproject keep mixed installs coherent. The badge at the
+top of this page shows the current release; the release history is at
 [z4j.dev/reference/changelog/](https://z4j.dev/reference/changelog/).

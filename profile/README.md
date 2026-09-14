@@ -1,11 +1,10 @@
 # z4j
 
-**Open-source control plane for Python task infrastructure.**
+**Open-source control plane for Python task queues.**
 
-One dashboard, one API, one agent SDK, for every Python task engine.
-Celery, RQ, Dramatiq, Huey, arq, TaskIQ, APScheduler, or plain
-scripts. Self-hosted. Self-contained. Zero external dependencies
-beyond Python.
+One dashboard, one API and one agent per layer of your stack, for the
+task engines you already run: Celery, RQ, Dramatiq, Huey, arq and taskiq.
+Self-hosted. No telemetry. Nothing to rewrite.
 
 [![PyPI](https://img.shields.io/pypi/v/z4j?label=z4j&color=blue)](https://pypi.org/project/z4j/)
 [![Python](https://img.shields.io/pypi/pyversions/z4j?color=blue)](https://pypi.org/project/z4j/)
@@ -15,34 +14,32 @@ beyond Python.
 
 ## Try the live demo (no install)
 
-[**demo.z4j.dev**](https://demo.z4j.dev) is the dashboard SPA running
-in your browser against pre-baked fake data. One click on the
-pre-filled login lands you in a populated control plane with four
-sample projects: Celery + celery-beat (small healthy starter),
-FastAPI + arq + arq-cron, Django + Celery + django-celery-beat
-with a current incident scenario (failing schedule, alert firing,
-worker offline), and a mixed-engine z4j-scheduler showcase
-driving Celery + RQ + Dramatiq workers from one place.
+[**demo.z4j.dev**](https://demo.z4j.dev) is the dashboard running in your
+browser against sample data. One click on the pre-filled login lands you
+in a populated control plane with four sample projects, including a
+Django + Celery project
+with a live incident (a failing schedule, an alert firing, a worker
+offline) and a mixed-engine project driven by z4j-scheduler.
 
-It is a navigable preview, not a sandbox: every Create / Update /
-Delete button toast-blocks (`This is a demo. Refresh to reset;
-install z4j to make changes for real.`), no real backend is
-connected, refresh resets to a clean state. Useful before you
-commit to `pip install`.
+It is a navigable preview, not a sandbox: mutations are blocked, no real
+backend is connected, and a refresh resets it. Useful before you commit
+to `pip install`.
 
-## Install in 30 seconds
+## Install
 
 ```bash
 pip install z4j
-export Z4J_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(48))")
-export Z4J_SESSION_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(48))")
-z4j migrate upgrade head
 z4j serve
 ```
 
-Open **http://localhost:7700**. You land on the dashboard. SQLite and
-the React SPA are bundled in the wheel, no database server or npm
-install required.
+Open **http://localhost:7700**. First boot mints the secrets, runs the
+migrations and prints a one-time setup URL for the first admin. SQLite
+and the dashboard are bundled in the wheel; no database server and no
+npm install. For Docker, and for PostgreSQL when you want replicas,
+partitioned history and full-text search, see the
+[install guide](https://z4j.dev/getting-started/install/). Switching the
+database backend later does not move your data; the guide says exactly
+what does and does not carry over.
 
 ## Where to go next
 
@@ -54,83 +51,85 @@ install required.
 
 ## z4j (the control plane)
 
-[**z4j**](https://github.com/z4jdev/z4j) is the main application.
-Server, dashboard, REST API, audit log. One process per environment,
-agents connect over an authenticated WebSocket, the dashboard
-surfaces every task / worker / queue / schedule event and exposes
-the operator action surface.
+[**z4j**](https://github.com/z4jdev/z4j) is the main application:
+server, dashboard, REST API, rule engine, audit log. One process per
+environment. Agents connect outbound over an HMAC-signed WebSocket; the
+dashboard surfaces every task, worker, queue and schedule event and
+exposes the operator controls.
 
 What an operator gets:
 
-- **Unified action surface across every Python task engine.** Retry,
-  cancel, bulk retry, purge queue, requeue dead-letter, restart
-  worker, schedule CRUD, manual trigger. Same workflow whether the
-  task ran on Celery, RQ, Dramatiq, Huey, arq, or TaskIQ.
-- **Real audit story.** HMAC-chained tamper-evident audit log of
-  every privileged action, with the issuer, target, source IP,
-  timestamp, and result. Exportable to CSV / JSON / xlsx for
-  compliance reviews.
-- **RBAC.** Project-scoped roles (Viewer / Operator / Admin / global
-  Admin). Argon2id passwords, signed session cookies, CSRF tokens,
-  per-project bearer-token API keys.
-- **Reconciliation.** Background worker reconciles tasks against
-  the engine's ground truth on a continuous cadence. No stale
-  "running" rows after a worker SIGKILL, no orphaned "pending"
-  tasks the broker already discarded.
-- **Notifications.** Per-user subscriptions and per-project
-  defaults across email / Slack / PagerDuty / Discord / Telegram /
-  webhook, with cooldown, mute, priority filters, and a personal
-  delivery log.
-- **Schedules**, with per-schedule trigger and a *Sync now* button
-  that pulls a fresh inventory from any connected agent. See the
-  [Schedulers section](#schedulers) below for how schedule sources
-  fit in.
-- **First-class multi-engine.** A single project runs Celery + RQ +
-  arq side by side; z4j renders the right badges per task, routes
-  operator actions to the right adapter, and keeps the audit log
-  uniform across them.
+- **Capability-aware controls.** Retry, cancel, bulk retry, purge,
+  requeue dead-letter, restart worker, schedule CRUD, manual trigger,
+  each offered only where the connected adapter advertises it. Six
+  engines do not have six identical feature sets, and the dashboard does
+  not pretend they do.
+- **Failure fingerprinting.** The same exception across runs, and across
+  engines, collapses into one issue with an occurrence count and an
+  open or recovered state.
+- **Automation with the brakes built in.** Per-project rules that
+  notify, retry or cancel on a task or scheduler trigger, each with a
+  circuit breaker, a kill switch and a dry-run mode.
+- **An audit log you can verify.** Every privileged action lands on an
+  HMAC-chained log with issuer, target, source IP, timestamp and result;
+  `z4j audit verify` checks the chain offline. The threat model, and the
+  boundary the chain does not cover, are published in the docs.
+- **RBAC and MFA.** Three project-scoped roles (viewer, operator,
+  admin), opt-in TOTP MFA with recovery codes, Argon2id passwords, signed
+  session cookies, CSRF tokens and scoped API keys.
+- **Reconciliation.** A background worker checks task state against the
+  engine's own view where the engine exposes one, so a worker killed
+  mid-task does not leave rows stuck on "running".
+- **Notifications.** Email, Slack, Microsoft Teams, PagerDuty, Discord,
+  Telegram and webhooks, with severity-aware subscriptions, cooldown and
+  mute.
+- **Schedules**, with a per-schedule trigger and a *Sync now* that pulls
+  a fresh inventory from any connected agent. See the
+  [Schedulers section](#schedulers) for how schedule sources fit in.
+- **Multi-engine by design.** One project can run Celery, RQ and arq
+  side by side; z4j renders the right badges per task, routes each
+  action to the right adapter and keeps the audit log uniform.
 
 ```bash
 pip install z4j                  # SQLite, single process
-pip install 'z4j[postgres]'      # production
+pip install 'z4j[postgres]'      # PostgreSQL driver for a replicated install
 z4j serve
 ```
 
-z4j is **AGPL v3** because it's the service operators host.
+z4j is **AGPL-3.0-or-later** because it is the service operators host.
 Everything your application code imports is **Apache-2.0**.
 
 ## Engines we support
 
-Six Python task engines, all first-class. Mix and match within a
-project; z4j renders them uniformly.
+Six Python task engines, all first-class. Mix them within a project.
 
 | Engine | Adapter | Notes |
 |---|---|---|
-| **Celery** | [z4j-celery](https://github.com/z4jdev/z4j-celery) | Widest feature coverage. Pool restart with zero task loss, broker-side rate limiting. |
+| **Celery** | [z4j-celery](https://github.com/z4jdev/z4j-celery) | Widest coverage: pool restart through Celery's own control channel, broker-side rate limiting. |
 | **RQ** | [z4j-rq](https://github.com/z4jdev/z4j-rq) | Redis-backed; Django and Flask both first-class. |
 | **Dramatiq** | [z4j-dramatiq](https://github.com/z4jdev/z4j-dramatiq) | Middleware-based capture, no decorator changes to your actors. |
-| **Huey** | [z4j-huey](https://github.com/z4jdev/z4j-huey) | Huey 2.x and 3.x, redis / sqlite / in-memory backends. |
-| **arq** | [z4j-arq](https://github.com/z4jdev/z4j-arq) | Async-native; common pairing with FastAPI. |
-| **TaskIQ** | [z4j-taskiq](https://github.com/z4jdev/z4j-taskiq) | Async-native; middleware hooks. |
+| **Huey** | [z4j-huey](https://github.com/z4jdev/z4j-huey) | Huey 2.4 and later. |
+| **arq** | [z4j-arq](https://github.com/z4jdev/z4j-arq) | Async-native; the common pairing with FastAPI. |
+| **taskiq** | [z4j-taskiq](https://github.com/z4jdev/z4j-taskiq) | Async-native; middleware hooks. |
 
-Each adapter streams task lifecycle events to z4j and accepts
-operator control actions back the same WebSocket. All Apache-2.0.
+Each adapter streams task lifecycle events to z4j and accepts operator
+actions back over the same WebSocket. All Apache-2.0. The exact action
+matrix per engine is on [z4j.com](https://z4j.com/engines).
 
 ## Schedulers
 
-z4j surfaces schedules from your existing in-language scheduler
-(celery-beat, rq-scheduler, APScheduler, etc.) so you can see them
-on the dashboard alongside tasks. Or you can run **z4j-scheduler**
-as the canonical scheduler across mixed engines, which is what
-makes the project genuinely different from Flower / rq-dashboard /
-viewer-grade tooling.
+z4j surfaces schedules from your existing scheduler (celery-beat,
+rq-scheduler, APScheduler and the others below) so you can see them on
+the dashboard alongside tasks. Or you can run **z4j-scheduler** as the
+one scheduler across mixed engines, which is what makes the project
+genuinely different from viewer-grade tooling.
 
 ### Observation-only adapters
 
 These wrap the engine's native scheduler and surface its existing
-schedules in the dashboard without taking ownership. Use them when
-the in-language scheduler already meets your needs and you just
-want the schedules visible alongside tasks.
+schedules in the dashboard without taking ownership. Use them when the
+scheduler you have meets your needs and you want the schedules visible
+alongside tasks.
 
 | Engine | Scheduler companion |
 |---|---|
@@ -138,117 +137,101 @@ want the schedules visible alongside tasks.
 | RQ | [z4j-rqscheduler](https://github.com/z4jdev/z4j-rqscheduler) |
 | Huey | [z4j-hueyperiodic](https://github.com/z4jdev/z4j-hueyperiodic) |
 | arq | [z4j-arqcron](https://github.com/z4jdev/z4j-arqcron) |
-| TaskIQ | [z4j-taskiqscheduler](https://github.com/z4jdev/z4j-taskiqscheduler) |
+| taskiq | [z4j-taskiqscheduler](https://github.com/z4jdev/z4j-taskiqscheduler) |
 | APScheduler | [z4j-apscheduler](https://github.com/z4jdev/z4j-apscheduler) |
-| Dramatiq | (no upstream scheduler, use z4j-scheduler) |
+| Dramatiq | (no upstream scheduler; use z4j-scheduler) |
 
-### z4j-scheduler (canonical, engine-agnostic)
+### z4j-scheduler (engine-agnostic)
 
-[**z4j-scheduler**](https://github.com/z4jdev/z4j-scheduler) is
-z4j's own dynamic scheduler. It's the genuinely differentiated piece
-and worth a closer look if any of these are true: you run more than
-one engine, you want to edit schedules live without daemon restarts,
-or you need an audit trail of schedule changes.
+[**z4j-scheduler**](https://github.com/z4jdev/z4j-scheduler) is z4j's
+own scheduler. Worth a closer look if you run more than one engine, want
+to edit schedules without a daemon restart, or need a record of who
+changed what.
 
-Concretely, what z4j-scheduler does that the in-language schedulers
-don't:
+What it does that the in-language schedulers do not:
 
-- **Engine-agnostic.** One service drives all six engines from one
-  process. A project running Celery for legacy services and arq
-  for a FastAPI rewrite uses the same scheduler for both.
-- **Live editing.** Schedules live in z4j's Postgres database.
-  Create, edit, pause, resume, rename, delete from the dashboard
-  or REST API. No daemon restart.
-- **HMAC-chained audit log.** Every schedule mutation (who, what,
-  when, from which IP) recorded alongside z4j's other audit
-  rows. celery-beat keeps no record. django-celery-beat keeps a
-  partial one only if django-auditlog is wired up.
-- **HA-ready.** Multiple instances against one Postgres; advisory
-  locks elect a leader; followers stay warm. Rolling restarts and
-  failovers are seconds, not minutes.
-- **Reversible.** Importers cover every native scheduler
-  (celery-beat / django-celery-beat / rq-scheduler / APScheduler /
-  Huey @periodic_task / arq cron / taskiq sources / system
-  crontab). Exporters write back to those same formats. Round-trip
-  integrity is pinned by tests; you can leave whenever you want.
-- **Solar triggers + DST correctness.** Schedule kinds: cron,
-  interval, one-shot, solar (sunrise / sunset / dawn / dusk /
-  noon / midnight at a given lat / lon). IANA zones validated at
-  the boundary; DST fall-back fold fixed (no double-fires);
-  spring-forward gap handled per-schedule.
-
-If you only run one engine, have no compliance pressure, and your
-existing in-language scheduler meets your needs, the
-observation-only adapter above is the simpler choice. z4j-scheduler
-exists for the mixed-engine + audit + live-editing case, and as a
-reversible migration path when those constraints change.
+- **Engine-agnostic.** One process drives all six engines. A project
+  running Celery for older services and arq for a FastAPI rewrite uses
+  one scheduler for both.
+- **Live editing.** Schedules live in z4j's database. Create, edit,
+  pause, resume and delete from the dashboard, declarative config or the
+  REST API. No daemon restart.
+- **Audited.** Every schedule change (who, what, when, from where) lands
+  on the same HMAC-chained log as z4j's other privileged actions.
+- **Leader election.** Multiple instances against one PostgreSQL
+  database race for an advisory lock; only the leader ticks, followers
+  stay warm. Takeover has no fixed response-time promise, and HA does
+  not make task execution exactly-once.
+- **Catch-up you choose.** After an outage each schedule decides for
+  itself: skip what it missed, fire one, or fire every slot it owes.
+- **Importers and advisory exports.** Import from celery-beat,
+  django-celery-beat, rq-scheduler, APScheduler jobstores or system
+  cron, with a diff you can verify before cutover. Exports for Celery,
+  RQ, APScheduler and cron are advisory: you review and apply the
+  generated file yourself.
+- **Cron, interval, one-shot and solar triggers.** IANA zones are
+  validated; during a fall-back an ambiguous wall-clock slot is two
+  distinct instants and z4j fires once at each.
 
 ```bash
 pip install z4j-scheduler
-z4j-scheduler import --from celery --celery-app myapp:app \
-  --project myproject --brain-url https://z4j.example.com \
-  --api-token "$Z4J_SCHEDULER_BRAIN_API_TOKEN" --dry-run
+z4j-scheduler import --from celery --project myproject
+# brain URL and token come from --brain-url / --api-token or the
+# Z4J_SCHEDULER_BRAIN_* environment variables
 ```
 
-Migration walkthrough at
-[z4j.dev/scheduler/migrating-from-celery-beat/](https://z4j.dev/scheduler/migrating-from-celery-beat/).
+Full comparison with celery-beat, django-celery-beat, rq-scheduler,
+APScheduler and cron, including where those remain the right choice:
+[z4j.dev/schedulers/z4j-scheduler/](https://z4j.dev/schedulers/z4j-scheduler/).
 
 ## Framework integrations
 
-One-line install for the three most common Python web frameworks.
-Each adapter auto-discovers whichever engine adapter you have
-installed alongside; cross-stack combos like Flask + RQ or
-FastAPI + arq are first-class supported.
+One package per web framework. Each adapter picks up whichever engine
+adapter you installed alongside it; cross-stack combinations such as
+Flask + RQ or FastAPI + arq are first-class.
 
-- [**z4j-django**](https://github.com/z4jdev/z4j-django). Add
-  `"z4j_django"` to `INSTALLED_APPS`; the agent starts when
-  Django boots.
-- [**z4j-flask**](https://github.com/z4jdev/z4j-flask). `Z4J(app)`
-  initializer in your app factory.
-- [**z4j-fastapi**](https://github.com/z4jdev/z4j-fastapi).
-  `add_z4j(app)` call after constructing the FastAPI app.
-- [**z4j-bare**](https://github.com/z4jdev/z4j-bare). Framework-free
-  agent runtime for plain scripts, Celery / RQ / Dramatiq workers,
-  or custom services that don't have a web framework.
+- [**z4j-django**](https://github.com/z4jdev/z4j-django): an AppConfig
+  integration; the agent starts when Django boots.
+- [**z4j-flask**](https://github.com/z4jdev/z4j-flask): the Flask
+  extension pattern, initialised on your app.
+- [**z4j-fastapi**](https://github.com/z4jdev/z4j-fastapi): a lifespan
+  integration for async stacks.
+- [**z4j-bare**](https://github.com/z4jdev/z4j-bare): the framework-free
+  agent runtime for plain scripts, worker processes and custom services.
 
-All Apache-2.0.
+Quickstarts for each: <https://z4j.dev/getting-started/install/>. All
+Apache-2.0.
 
 ## Foundations
 
-- [**z4j-core**](https://github.com/z4jdev/z4j-core). Shared SDK
-  used by every agent. Pure-Python, no framework imports, vendorable
-  into any worker process.
-- [**z4j**](https://github.com/z4jdev/z4j). The flagship distribution
-  -- ships z4j (the central process), plus an extras catalogue for
-  pulling in adapters: `pip install z4j[django,celery]` resolves a
-  coherent stack in one command; cross-versioning across all 20
-  packages stays in sync via the floors.
+- [**z4j-core**](https://github.com/z4jdev/z4j-core): the shared SDK used
+  by every agent and by the brain. Protocols, domain models, redaction,
+  the signed envelope. No framework imports.
+- [**z4j**](https://github.com/z4jdev/z4j): the flagship distribution.
+  The brain, plus an extras catalogue for pulling in adapters:
+  `pip install 'z4j[django,celery]'` resolves a coherent stack in one
+  command, with version floors that keep every package on one line.
 
 ## License
 
 Split on purpose, not by accident.
 
 - **z4j** (the central process you run in your infrastructure) is
-  [**AGPL v3**](https://www.gnu.org/licenses/agpl-3.0.html). You can
-  self-host, modify, and redistribute. If you run a modified copy
+  [**AGPL-3.0-or-later**](https://www.gnu.org/licenses/agpl-3.0.html).
+  You can self-host, modify and redistribute. If you run a modified copy
   as a network service, publish your modifications under the same
-  license. If that's incompatible with your policy, a commercial
-  license is available: `licensing@z4j.com`.
-- **All agent + scheduler packages** (engine adapters, framework
-  integrations, foundations, plus z4j-scheduler) are
-  [**Apache 2.0**](https://www.apache.org/licenses/LICENSE-2.0).
-  Integrating z4j into a proprietary application does **not**
-  subject your application to the AGPL.
-
-The split is deliberate: z4j is the service operators host,
-protected by copyleft. Everything your application code imports is
-permissive.
+  license. If that is incompatible with your policy, a commercial license
+  is available: `licensing@z4j.com`.
+- **All agent and scheduler packages** (engine adapters, framework
+  integrations, foundations and z4j-scheduler) are
+  [**Apache-2.0**](https://www.apache.org/licenses/LICENSE-2.0).
+  Integrating z4j into a proprietary application does **not** subject
+  your application to the AGPL.
 
 ## Project status
 
-z4j 1.4.0 (May 2026) is the current baseline -- the consolidation
-cut where the central process moved to the `z4j` PyPI distribution
-(pre-1.4.0 it was `z4j`, which now exists as a metadata-only
-compatibility shim). The ecosystem ships 20 PyPI packages
-cross-versioned to the same release line, with floors enforced
-through every package's pyproject so mixed installs stay coherent.
+The ecosystem ships 19 PyPI packages cross-versioned to one release
+line, with floors in every package's pyproject so mixed installs stay
+coherent. The badge at the top of this page shows the current release;
+the release history is at
+[z4j.dev/reference/changelog/](https://z4j.dev/reference/changelog/).

@@ -108,7 +108,7 @@ Six Python task engines, all first-class. Mix them within a project.
 | **Celery** | [z4j-celery](https://github.com/z4jdev/z4j-celery) | Widest coverage: pool restart through Celery's own control channel, broker-side rate limiting. |
 | **RQ** | [z4j-rq](https://github.com/z4jdev/z4j-rq) | Redis-backed; Django and Flask both first-class. |
 | **Dramatiq** | [z4j-dramatiq](https://github.com/z4jdev/z4j-dramatiq) | Middleware-based capture, no decorator changes to your actors. |
-| **Huey** | [z4j-huey](https://github.com/z4jdev/z4j-huey) | Huey 2.4 and later, below 3. |
+| **Huey** | [z4j-huey](https://github.com/z4jdev/z4j-huey) | Huey 2.4 and later, on Huey 2 and Huey 3. |
 | **arq** | [z4j-arq](https://github.com/z4jdev/z4j-arq) | Async-native; the common pairing with FastAPI. |
 | **taskiq** | [z4j-taskiq](https://github.com/z4jdev/z4j-taskiq) | Async-native; middleware hooks. |
 
@@ -165,11 +165,12 @@ What it does that the in-language schedulers do not:
 - **Catch-up you choose.** After an outage each schedule decides for
   itself: skip what it missed, fire one, or fire every slot it owes.
 - **Importers and advisory exports.** Import from celery-beat,
-  django-celery-beat, rq-scheduler, APScheduler jobstores or system
-  cron, with a diff you can verify before cutover. Exports for Celery,
-  RQ, APScheduler and cron are advisory: you review and apply the
-  generated file yourself. There is no importer for Huey, arq or taskiq
-  schedules.
+  django-celery-beat, rq-scheduler, APScheduler jobstores, system cron,
+  Huey periodic tasks, arq cron jobs or taskiq schedule labels, with a
+  diff you can verify before cutover. Exports for Celery, RQ,
+  APScheduler, cron, Huey, arq and taskiq are advisory: you review and
+  apply the generated file yourself. Dramatiq has no native scheduler
+  to import from or export to.
 - **Cron, interval, one-shot and solar triggers.** IANA zones are
   validated; during a fall-back an ambiguous wall-clock slot is two
   distinct instants and z4j fires once at each.
